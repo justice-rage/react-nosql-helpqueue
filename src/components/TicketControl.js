@@ -4,7 +4,7 @@ import TicketList from './TicketList';
 import EditTicketForm from './EditTicketForm';
 import TicketDetail from './TicketDetail';
 import db from './../firebase.js'
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, onSnapshot } from "firebase/firestore";
 
 function TicketControl() {
 
@@ -12,6 +12,34 @@ function TicketControl() {
   const [mainTicketList, setMainTicketList] = useState([]);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => { 
+    const unSubscribe = onSnapshot(
+      collection(db, "tickets"), 
+      (collectionSnapshot) => {
+        const tickets = [];
+        collectionSnapshot.forEach((doc) => {
+          tickets.push({
+            names: doc.data().names, 
+            location: doc.data().location, 
+            issue: doc.data().issue, 
+            id: doc.id
+          });
+      });
+      setMainTicketList(tickets);
+      }, 
+      (error) => {
+        setError(error.message);
+      }
+    );
+
+    return () => unSubscribe();
+  }, []);
+
+  ...
+
+} 
 
   const handleClick = () => {
     if (selectedTicket != null) {
@@ -56,7 +84,9 @@ function TicketControl() {
   let currentlyVisibleState = null;
   let buttonText = null; 
 
-  if (editing) {      
+  if (error) {
+    currentlyVisibleState = <p>There was an error: {error}</p>
+  } else if (editing) {      
     currentlyVisibleState = 
       <EditTicketForm 
         ticket = {selectedTicket} 
@@ -85,10 +115,9 @@ function TicketControl() {
   return (
     <React.Fragment>
       {currentlyVisibleState}
-      <button onClick={handleClick}>{buttonText}</button> 
+      {error ? null : <button onClick={handleClick}>{buttonText}</button>}
     </React.Fragment>
   );
-}
 
 export default TicketControl;
 
